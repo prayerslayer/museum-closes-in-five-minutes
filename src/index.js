@@ -32,8 +32,6 @@ var cursors;
 var map;
 
 function preload() {
-  this.load.setBaseURL("http://localhost:8080");
-
   this.load.spritesheet("tiles", SPRITES, {
     frameWidth: 10,
     frameHeight: 10
