@@ -6,6 +6,10 @@ import WALLS from "./assets/img/walls.png";
 import MUSEUM from "./assets/map/room.csv";
 import paintings from "./paintings";
 
+const SCALE_FACTOR = 4;
+const PLAYER_VELOCITY = 80 * SCALE_FACTOR;
+const VISITOR_VELOCITY = 20 * SCALE_FACTOR;
+
 var config = {
   type: Phaser.AUTO,
   width: 640,
@@ -37,7 +41,8 @@ var map;
 function preload() {
   this.load.spritesheet("player", PLAYER, {
     frameWidth: 16,
-    frameHeight: 16
+    frameHeight: 16,
+    scale: SCALE_FACTOR
   });
   this.load.spritesheet("walls", WALLS, {
     frameWidth: 16,
@@ -55,10 +60,10 @@ function updatePlayer() {
     cursors.down.isDown;
 
   if (cursors.left.isDown) {
-    player.setVelocityX(-80);
+    player.setVelocityX(-PLAYER_VELOCITY);
     player.anims.play("walk_left", true);
   } else if (cursors.right.isDown) {
-    player.setVelocityX(80);
+    player.setVelocityX(PLAYER_VELOCITY);
     player.anims.play("walk_right", true);
   } else {
     player.setVelocityX(0);
@@ -67,9 +72,9 @@ function updatePlayer() {
   player.depth = player.y;
 
   if (cursors.up.isDown) {
-    player.setVelocityY(-80);
+    player.setVelocityY(-PLAYER_VELOCITY);
   } else if (cursors.down.isDown) {
-    player.setVelocityY(80);
+    player.setVelocityY(PLAYER_VELOCITY);
   } else {
     player.setVelocityY(0);
   }
@@ -111,8 +116,8 @@ function moveVisitors(dis) {
       if (direction >= 4) {
         const xDir = direction == 4 ? -1 : direction === 5 ? 1 : 0;
         const yDir = direction == 6 ? -1 : direction === 7 ? 1 : 0;
-        v.setVelocityX(20 * xDir);
-        v.setVelocityY(20 * yDir);
+        v.setVelocityX(VISITOR_VELOCITY * xDir);
+        v.setVelocityY(VISITOR_VELOCITY * yDir);
         if (xDir > 0) {
           v.anims.play("walk_right", true);
         } else if (xDir < 0) {
@@ -127,13 +132,16 @@ function moveVisitors(dis) {
         const { x, y } = layer.tileToWorldXY(tile.x, tile.y);
         dis.tweens.add({
           targets: v,
-          x: x + Phaser.Math.Between(0, 8),
-          y: y + 8,
-          onComplete: () =>
+          x: x + Phaser.Math.Between(0, 32),
+          y: y + 32,
+          onStart: () => v.anims.play("walk_right"),
+          onComplete: () => {
             v.setData({
               state: VisitorState.Idle,
               last_state_change: Date.now()
-            })
+            });
+            v.anims.play("idle");
+          }
         });
         v.setData({
           state: VisitorState.GoingToPainting,
@@ -170,6 +178,7 @@ function create() {
   map.setCollision([WALL_TILE]);
   const tileset = map.addTilesetImage("walls");
   layer = map.createStaticLayer(0, tileset, 0, 0);
+  layer.setScale(SCALE_FACTOR);
   let lastUsedPainting = -1;
   layer.forEachTile(tile => {
     if (tile.index === PAINTING_TILE) {
@@ -177,7 +186,8 @@ function create() {
       tile.properties.visited = false;
       const { x, y } = layer.tileToWorldXY(tile.x, tile.y);
       const img = this.add.image(x + 8, y + 8, paintings[painting]);
-      img.setOrigin(1, 1);
+      // img.setOrigin(1, 1);
+      img.setScale(SCALE_FACTOR);
       tile.properties.image = img;
       tile.properties.attractiveness = Phaser.Math.Between(0, 100);
       lastUsedPainting = painting;
@@ -185,7 +195,6 @@ function create() {
     }
   });
   sortBy(paintingTiles, tile => tile.properties.attractiveness);
-
   visitors = this.physics.add.group({
     defaultKey: "player",
     defaultFrame: 0,
@@ -194,14 +203,15 @@ function create() {
   for (let i = 0; i < 100; i++) {
     let x, y;
     do {
-      x = Math.floor(Math.random() * 400);
-      y = Math.floor(Math.random() * 400);
+      x = Math.floor(Math.random() * 1600);
+      y = Math.floor(Math.random() * 1600);
     } while (layer.getTileAtWorldXY(x, y).index === WALL_TILE);
     visitors.get(x, y);
   }
-  visitors.children.iterate(v =>
-    v.setData({ state: VisitorState.Idle, last_state_change: 0 })
-  );
+  visitors.children.iterate(v => {
+    v.setData({ state: VisitorState.Idle, last_state_change: 0 });
+    v.setScale(SCALE_FACTOR);
+  });
 
   this.anims.create({
     key: "walk_right",
@@ -225,16 +235,28 @@ function create() {
     key: "idle",
     frames: this.anims.generateFrameNumbers("player", { start: 0, end: 0 })
   });
-  player = this.physics.add.sprite(40, 40, "player", 0);
+  player = this.physics.add.sprite(160, 160, "player", 0);
+  player.setScale(SCALE_FACTOR);
   this.physics.add.collider(player, layer);
   // this.physics.add.collider(player, visitors);
   this.physics.add.collider(visitors, layer);
   this.cameras.main.startFollow(player);
   this.cameras.main.zoom = 1;
 
+  const bg = this.add.graphics({ x: 10, y: 15 });
+  bg.depth = Number.MAX_SAFE_INTEGER;
+  bg.setScrollFactor(0);
+  bg.fillStyle(0xaaaaaa, 1);
+  bg.fillRect(0, 0, 150, 24);
+  console.log(bg);
+  // bg.beginFill(0x000000, 1);
+  // bg.drawRect();
+  // bg.endFill();
+
   text = this.add.text(16, 16, "Score: 0", {
     fontSize: "20px",
     fill: "#ffffff"
   });
+  text.depth = Number.MAX_SAFE_INTEGER;
   text.setScrollFactor(0);
 }
