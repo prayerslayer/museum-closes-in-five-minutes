@@ -1,13 +1,10 @@
 import Phaser from "phaser";
-
+import sortBy from "lodash-es/sortBy";
 // import SPRITES from "./assets/img/exit_game.png";
 import PLAYER from "./assets/img/walk_right.png";
 import WALLS from "./assets/img/walls.png";
 import MUSEUM from "./assets/map/room.csv";
-import MONET from "./assets/img/paintings/Monet_Nympheas_1904.png";
-import MUNCH from "./assets/img/paintings/Munch_-_The_Scream.png";
-
-const paintings = [MONET, MUNCH];
+import paintings from "./paintings";
 
 var config = {
   type: Phaser.AUTO,
@@ -86,7 +83,7 @@ function checkOverlapWithPainting() {
   const tile = layer.getTileAtWorldXY(player.x, player.y);
   if (tile.index === PAINTING_TILE && !tile.properties.visited) {
     tile.properties.visited = true;
-    score += 1;
+    score += tile.properties.attractiveness;
     tile.properties.image.setTint(0xaaaaaa);
   }
 }
@@ -95,11 +92,22 @@ function updateText() {
   text.setText("Score: " + score);
 }
 
-function moveVisitors() {
+const VisitorState = {
+  Idle: 1,
+  RandomlyMoving: 2,
+  GoingToPainting: 3
+};
+
+const visitorStateChanges = [0, 1, 2, 3, 4, 5, 6, 7];
+
+function moveVisitors(dis) {
   const now = Date.now();
   visitors.children.iterate(v => {
-    if (now - v.moved > 3000) {
-      const direction = Phaser.Math.RND.weightedPick([0, 1, 2, 3, 4, 5, 6, 7]);
+    if (
+      v.getData("state") === VisitorState.Idle &&
+      now - v.getData("last_state_change") > 3000
+    ) {
+      const direction = Phaser.Math.RND.weightedPick(visitorStateChanges);
       if (direction >= 4) {
         const xDir = direction == 4 ? -1 : direction === 5 ? 1 : 0;
         const yDir = direction == 6 ? -1 : direction === 7 ? 1 : 0;
@@ -110,11 +118,35 @@ function moveVisitors() {
         } else if (xDir < 0) {
           v.anims.play("walk_left", true);
         }
-        v.moved = Date.now();
+        v.setData({
+          state: VisitorState.RandomlyMoving,
+          last_state_change: Date.now()
+        });
+      } else if (direction === 0) {
+        const tile = Phaser.Math.RND.weightedPick(paintingTiles);
+        const { x, y } = layer.tileToWorldXY(tile.x, tile.y);
+        dis.tweens.add({
+          targets: v,
+          x: x + Phaser.Math.Between(0, 8),
+          y: y + 8,
+          onComplete: () =>
+            v.setData({
+              state: VisitorState.Idle,
+              last_state_change: Date.now()
+            })
+        });
+        v.setData({
+          state: VisitorState.GoingToPainting,
+          last_state_change: Date.now()
+        });
       } else {
         v.setVelocityX(0);
         v.setVelocityY(0);
         v.anims.play("idle", true);
+        v.setData({
+          state: VisitorState.Idle,
+          last_state_change: Date.now()
+        });
       }
     }
     v.depth = v.y;
@@ -125,11 +157,12 @@ function update() {
   updateText();
   updatePlayer();
   checkOverlapWithPainting();
-  moveVisitors();
+  moveVisitors(this);
 }
 
 const WALL_TILE = 5;
 const PAINTING_TILE = 6;
+const paintingTiles = [];
 
 function create() {
   cursors = this.input.keyboard.createCursorKeys();
@@ -146,9 +179,12 @@ function create() {
       const img = this.add.image(x + 8, y + 8, paintings[painting]);
       img.setOrigin(1, 1);
       tile.properties.image = img;
+      tile.properties.attractiveness = Phaser.Math.Between(0, 100);
       lastUsedPainting = painting;
+      paintingTiles.push(tile);
     }
   });
+  sortBy(paintingTiles, tile => tile.properties.attractiveness);
 
   visitors = this.physics.add.group({
     defaultKey: "player",
@@ -163,13 +199,15 @@ function create() {
     } while (layer.getTileAtWorldXY(x, y).index === WALL_TILE);
     visitors.get(x, y);
   }
-  visitors.children.iterate(v => (v.moved = Date.now() - 3000));
+  visitors.children.iterate(v =>
+    v.setData({ state: VisitorState.Idle, last_state_change: 0 })
+  );
 
   this.anims.create({
     key: "walk_right",
     frames: this.anims.generateFrameNumbers("player", {
       start: 1,
-      end: 5
+      end: 6
     }),
     repeat: -1,
     frameRate: 10
@@ -177,8 +215,8 @@ function create() {
   this.anims.create({
     key: "walk_left",
     frames: this.anims.generateFrameNumbers("player", {
-      start: 6,
-      end: 11
+      start: 7,
+      end: 12
     }),
     repeat: -1,
     frameRate: 10
@@ -192,7 +230,7 @@ function create() {
   // this.physics.add.collider(player, visitors);
   this.physics.add.collider(visitors, layer);
   this.cameras.main.startFollow(player);
-  this.cameras.main.zoom = 4;
+  this.cameras.main.zoom = 1;
 
   text = this.add.text(16, 16, "Score: 0", {
     fontSize: "20px",
