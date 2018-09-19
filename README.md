@@ -3,7 +3,6 @@ A game. Exit the museum, but see art on the way. Second attempt after prayerslay
 
 ## TODO
 
-* Pathfinding of visitors with constant speed
 * Score animation + character animation + text when painting was collected
   * palim palim score
   * "Wow, Schmerhard Trichter definitely outdid himself on that one."
