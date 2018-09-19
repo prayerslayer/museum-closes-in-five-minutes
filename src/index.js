@@ -53,7 +53,10 @@ const visitorFSM = Machine({
 });
 
 let pfGrid = [];
-const pathfinder = new Pathfinding.AStarFinder();
+const pathfinder = new Pathfinding.AStarFinder({
+  allowDiagonal: true,
+  dontCrossCorners: true
+});
 let player;
 let visitors = [];
 let layer;
@@ -63,7 +66,7 @@ let cursors;
 let map;
 const WALL_TILE = 5;
 const PAINTING_TILE = 6;
-const paintingTiles = [];
+let paintingTiles = [];
 
 function preload() {
   this.load.spritesheet("player", PLAYER, {
@@ -106,7 +109,10 @@ function create() {
       paintingTiles.push(tile);
     }
   });
-  _sortBy(paintingTiles, tile => tile.properties.attractiveness);
+  paintingTiles = _sortBy(
+    paintingTiles,
+    tile => -tile.properties.attractiveness
+  );
   visitors = this.physics.add.group({
     defaultKey: "player",
     defaultFrame: 0,
