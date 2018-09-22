@@ -204,8 +204,8 @@ new Phaser.Game({
   physics: {
     default: "arcade",
     arcade: {
-      gravity: false,
-      debug: true
+      gravity: false
+      // debug: true
     }
   },
   scene: {
