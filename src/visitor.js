@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { SCALE_FACTOR, TILE_SIZE, VISITOR_VELOCITY } from "./config";
+import { VISITOR_VELOCITY, SCALE_FACTOR, TILE_SIZE } from "./config";
 import { VisitorState, GoAction, VisitorFSM, VisitorAction } from "./states";
 
 const visitorActions = [
@@ -12,7 +12,6 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, everything) {
     super(scene, x, y);
     this.everything = everything; // this sucks
-    // this.setTint(0x669933); // TODO maybe nice?
     this.setData({
       state: VisitorState.Idle,
       last_state_change: Date.now() - 3000
@@ -52,6 +51,7 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
         v.anims.play("idle", true);
         break;
       case VisitorState.GoingToPainting: {
+        this.setTint(0xff0000);
         const dst = Phaser.Math.RND.weightedPick(paintingTiles);
         const src = layer.getTileAtWorldXY(v.x, v.y);
         v.animateTo(pathfinder.findPath(src, dst));
@@ -59,6 +59,7 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
       }
       case VisitorState.RandomlyMoving:
         {
+          this.setTint(0x00ff00);
           const direction = Phaser.Math.RND.weightedPick(Object.keys(GoAction));
           const xDir =
             direction == GoAction.GoLeft
@@ -76,7 +77,7 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
           v.setVelocityY(VISITOR_VELOCITY * yDir);
           if (xDir > 0) {
             v.anims.play("walk_right", true);
-          } else if (xDir < 0) {
+          } else {
             v.anims.play("walk_left", true);
           }
         }
@@ -92,14 +93,16 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
     const v = this;
     const scene = v.scene;
     if (path.length < 2) {
-      const newState = VisitorFSM.transition(
-        VisitorState.GoingToPainting,
-        VisitorAction.FoundPainting
-      ).value;
-      v.setData({
-        state: newState,
-        last_state_change: Date.now()
-      });
+      if (v.getData("state") === VisitorState.GoingToPainting) {
+        const newState = VisitorFSM.transition(
+          VisitorState.GoingToPainting,
+          VisitorAction.FoundPainting
+        ).value;
+        v.setData({
+          state: newState,
+          last_state_change: Date.now()
+        });
+      }
       v.anims.play("idle");
       return;
     }
@@ -117,7 +120,8 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
           Math.pow(current[0] - previous[0], 2) +
             Math.pow(current[1] - previous[1], 2)
         ) *
-        6 *
+        (3 / 2) *
+        SCALE_FACTOR *
         VISITOR_VELOCITY;
 
       tweens.push({
@@ -132,9 +136,9 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    for (let i = 0; i < tweens.length - 1; i++) {
+    for (let i = 0; i < tweens.length; i++) {
       tweens[i].onComplete = () => {
-        if (i === tweens.length - 2) {
+        if (i === tweens.length - 1) {
           const newState = VisitorFSM.transition(
             VisitorState.GoingToPainting,
             VisitorAction.FoundPainting

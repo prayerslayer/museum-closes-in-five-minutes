@@ -23,13 +23,13 @@ let paintingTiles = [];
 
 function preload() {
   this.load.spritesheet("player", PLAYER, {
-    frameWidth: 16,
-    frameHeight: 16,
+    frameWidth: TILE_SIZE,
+    frameHeight: TILE_SIZE,
     scale: SCALE_FACTOR
   });
   this.load.spritesheet("walls", WALLS, {
-    frameWidth: 16,
-    frameHeight: 16
+    frameWidth: TILE_SIZE,
+    frameHeight: TILE_SIZE
   });
   paintings.forEach(painting => this.load.image(painting, painting));
   this.load.tilemapCSV("museum", MUSEUM);
@@ -51,6 +51,7 @@ function create() {
       row.map(col => (col.index === WALL_TILE ? 1 : 0))
     )
   );
+
   let lastUsedPainting = -1;
   layer.forEachTile(tile => {
     if (tile.index === PAINTING_TILE) {
@@ -59,6 +60,7 @@ function create() {
       const { x, y } = layer.tileToWorldXY(tile.x, tile.y);
       const img = this.add.image(x, y, paintings[painting]);
       img.setScale(SCALE_FACTOR);
+      img.setOrigin(0, 0);
       tile.properties.image = img;
       // TODO need to check proper distribution around 50
       tile.properties.attractiveness = Phaser.Math.Between(0, 100);
@@ -70,11 +72,12 @@ function create() {
     paintingTiles,
     tile => -tile.properties.attractiveness
   );
+
   visitors = this.physics.add.group({
     defaultKey: "player",
-    classType: Visitor,
-    scaleX: SCALE_FACTOR
+    classType: Visitor
   });
+
   const [numTilesW, numTilesH] = MAP_SIZE;
   for (let i = 0; i < 100; i++) {
     let x, y;
@@ -88,6 +91,13 @@ function create() {
       paintingTiles
     });
   }
+  visitors.children.iterate(sprite => {
+    sprite.setSize(TILE_SIZE, TILE_SIZE);
+    sprite.setScale(SCALE_FACTOR);
+    sprite.setOrigin(0, 0);
+    sprite.body.updateBounds();
+    sprite.body.setOffset(TILE_SIZE, TILE_SIZE);
+  });
 
   this.anims.create({
     key: "walk_right",
