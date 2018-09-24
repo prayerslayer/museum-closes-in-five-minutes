@@ -18,6 +18,15 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
+  walkLeft() {
+    this.flipX = true;
+    this.anims.play("walk_x", true);
+  }
+  walkRight() {
+    this.flipX = false;
+    this.anims.play("walk_x", true);
+  }
+
   stateTransition() {
     const v = this;
     const currentState = v.getData("state");
@@ -60,6 +69,7 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
       case VisitorState.RandomlyMoving:
         {
           this.setTint(0x00ff00);
+          // TODO instead stupidly going in a direction they should be animated to a random tile
           const direction = Phaser.Math.RND.weightedPick(Object.keys(GoAction));
           const xDir =
             direction == GoAction.GoLeft
@@ -76,9 +86,9 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
           v.setVelocityX(VISITOR_VELOCITY * xDir);
           v.setVelocityY(VISITOR_VELOCITY * yDir);
           if (xDir > 0) {
-            v.anims.play("walk_right", true);
+            this.walkRight();
           } else {
-            v.anims.play("walk_left", true);
+            this.walkLeft();
           }
         }
         break;
@@ -129,10 +139,7 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
         x,
         y,
         duration,
-        onStart: () =>
-          left
-            ? v.anims.play("walk_left", true)
-            : v.anims.play("walk_right", true)
+        onStart: () => (left ? this.walkLeft() : this.walkRight())
       });
     }
 

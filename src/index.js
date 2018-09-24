@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import _sortBy from "lodash-es/sortBy";
-import PLAYER from "./assets/img/walk_right.png";
+import PLAYER from "./assets/img/player.png";
 import WALLS from "./assets/img/walls.png";
 import MUSEUM from "./assets/map/room.csv";
 import paintings from "./paintings";
@@ -100,22 +100,13 @@ function create() {
   });
 
   this.anims.create({
-    key: "walk_right",
+    key: "walk_x",
     frames: this.anims.generateFrameNumbers("player", {
-      start: 1,
-      end: 6
+      start: 0,
+      end: 7
     }),
     repeat: -1,
-    frameRate: 10
-  });
-  this.anims.create({
-    key: "walk_left",
-    frames: this.anims.generateFrameNumbers("player", {
-      start: 7,
-      end: 12
-    }),
-    repeat: -1,
-    frameRate: 10
+    frameRate: 12
   });
   this.anims.create({
     key: "idle",
@@ -158,10 +149,12 @@ function updatePlayer() {
 
   if (cursors.left.isDown) {
     player.setVelocityX(-PLAYER_VELOCITY);
-    player.anims.play("walk_left", true);
+    player.flipX = true;
+    player.anims.play("walk_x", true);
   } else if (cursors.right.isDown) {
     player.setVelocityX(PLAYER_VELOCITY);
-    player.anims.play("walk_right", true);
+    player.flipX = false;
+    player.anims.play("walk_x", true);
   } else {
     player.setVelocityX(0);
   }
