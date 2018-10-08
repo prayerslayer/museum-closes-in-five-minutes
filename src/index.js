@@ -7,18 +7,30 @@ import paintings from "./paintings";
 import Pathfinder from "./pathfinder";
 import Visitor from "./visitor";
 
-import { SCALE_FACTOR, TILE_SIZE, PLAYER_VELOCITY, MAP_SIZE } from "./config";
+import {
+  SCALE_FACTOR,
+  TILE_SIZE,
+  PLAYER_VELOCITY,
+  MAP_SIZE,
+  COUNTDOWN
+} from "./config";
+
+function formatTime(timer) {
+  return `${Math.floor(COUNTDOWN - timer.elapsed) / 1000}`;
+}
 
 let player;
 let visitors = [];
 let layer;
 let pathfinder;
 let text;
+let timer;
 let score = 0;
 let cursors;
 let map;
 const WALL_TILE = 5;
 const PAINTING_TILE = 6;
+const DOOR_TILE = 7;
 let paintingTiles = [];
 
 function preload() {
@@ -42,15 +54,21 @@ function create() {
     tileWidth: TILE_SIZE,
     tileHeight: TILE_SIZE
   });
-  map.setCollision([WALL_TILE]);
+  map.setCollision([WALL_TILE, DOOR_TILE]);
   const tileset = map.addTilesetImage("walls");
-  layer = map.createStaticLayer(0, tileset, 0, 0);
+  layer = map.createDynamicLayer(0, tileset, 0, 0);
   layer.setScale(SCALE_FACTOR);
   pathfinder = new Pathfinder(
     layer.tilemap.layers[0].data.map(row =>
-      row.map(col => (col.index === WALL_TILE ? 1 : 0))
+      row.map(col => ([WALL_TILE, DOOR_TILE].includes(col.index) ? 1 : 0))
     )
   );
+
+  timer = this.time.addEvent({
+    delay: COUNTDOWN,
+    // TODO: Better would be a scene switch
+    callback: () => this.scene.pause()
+  });
 
   let lastUsedPainting = -1;
   layer.forEachTile(tile => {
@@ -123,9 +141,9 @@ function create() {
   bg.depth = Number.MAX_SAFE_INTEGER;
   bg.setScrollFactor(0);
   bg.fillStyle(0xaaaaaa, 1);
-  bg.fillRect(0, 0, 150, 24);
+  bg.fillRect(0, 0, 350, 24);
 
-  text = this.add.text(16, 16, "Score: 0", {
+  text = this.add.text(16, 16, "Score: 0 / Time: 05:00.000", {
     fontSize: "20px",
     fill: "#ffffff"
   });
@@ -180,7 +198,7 @@ function checkOverlapWithPainting() {
 }
 
 function updateText() {
-  text.setText("Score: " + score);
+  text.setText("Score: " + score + " / Time: " + formatTime(timer));
 }
 
 function update() {

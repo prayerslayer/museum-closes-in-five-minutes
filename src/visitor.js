@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { VISITOR_VELOCITY, SCALE_FACTOR, TILE_SIZE } from "./config";
+import { VISITOR_VELOCITY, SCALE_FACTOR } from "./config";
 import { VisitorState, GoAction, VisitorFSM, VisitorAction } from "./states";
 
 const visitorActions = [
