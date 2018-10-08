@@ -10,12 +10,6 @@ export const VisitorAction = {
   StopMoving: "StopMoving",
   FoundPainting: "FoundPainting"
 };
-export const GoAction = {
-  GoLeft: "GoLeft",
-  GoRight: "GoRight",
-  GoUp: "GoUp",
-  GoDown: "GoDown"
-};
 
 export const VisitorFSM = Machine({
   initial: VisitorState.Idle,

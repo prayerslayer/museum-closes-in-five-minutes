@@ -12,6 +12,7 @@ import {
   TILE_SIZE,
   PLAYER_VELOCITY,
   MAP_SIZE,
+  DEBUG,
   COUNTDOWN
 } from "./config";
 
@@ -54,7 +55,7 @@ function create() {
     tileWidth: TILE_SIZE,
     tileHeight: TILE_SIZE
   });
-  map.setCollision([WALL_TILE, DOOR_TILE]);
+  map.setCollision([WALL_TILE]);
   const tileset = map.addTilesetImage("walls");
   layer = map.createDynamicLayer(0, tileset, 0, 0);
   layer.setScale(SCALE_FACTOR);
@@ -131,6 +132,8 @@ function create() {
     frames: this.anims.generateFrameNumbers("player", { start: 0, end: 0 })
   });
   player = this.physics.add.sprite(160, 160, "player", 0);
+  player.setOrigin(0, 0);
+  player.setOffset(TILE_SIZE / 2, TILE_SIZE / 2);
   player.setScale(SCALE_FACTOR);
   this.physics.add.collider(player, layer);
   this.physics.add.collider(visitors, layer);
@@ -177,8 +180,6 @@ function updatePlayer() {
     player.setVelocityX(0);
   }
 
-  player.depth = player.y;
-
   if (cursors.up.isDown) {
     player.setVelocityY(-PLAYER_VELOCITY);
   } else if (cursors.down.isDown) {
@@ -186,6 +187,8 @@ function updatePlayer() {
   } else {
     player.setVelocityY(0);
   }
+
+  player.depth = player.y;
 }
 
 function checkOverlapWithPainting() {
@@ -197,6 +200,18 @@ function checkOverlapWithPainting() {
   }
 }
 
+function checkOverlapWithDoor() {
+  const tile = layer.getTileAtWorldXY(player.x, player.y);
+  if (tile.index === DOOR_TILE) {
+    tile.index = 0;
+    pathfinder = new Pathfinder(
+      layer.tilemap.layers[0].data.map(row =>
+        row.map(col => ([WALL_TILE, DOOR_TILE].includes(col.index) ? 1 : 0))
+      )
+    );
+  }
+}
+
 function updateText() {
   text.setText("Score: " + score + " / Time: " + formatTime(timer));
 }
@@ -204,6 +219,7 @@ function updateText() {
 function update() {
   updateText();
   updatePlayer();
+  checkOverlapWithDoor();
   checkOverlapWithPainting();
 }
 
@@ -215,8 +231,8 @@ new Phaser.Game({
   physics: {
     default: "arcade",
     arcade: {
-      gravity: false
-      // debug: true
+      gravity: false,
+      debug: DEBUG
     }
   },
   scene: {

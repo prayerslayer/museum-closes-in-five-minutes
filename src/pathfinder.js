@@ -9,6 +9,18 @@ export default class Pathfinder {
     });
   }
 
+  getRandomWalkableTile(excludeTiles = []) {
+    let x, y;
+    do {
+      x = Math.floor(Math.random() * this.grid.width);
+      y = Math.floor(Math.random() * this.grid.height);
+    } while (
+      this.grid.nodes[x][y] === 1 ||
+      excludeTiles.findIndex(t => t.x === x && t.y === y) !== -1
+    );
+    return { x, y };
+  }
+
   findPath(from, to) {
     if (!from || !to) {
       return [];

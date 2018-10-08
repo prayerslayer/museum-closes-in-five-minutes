@@ -1,16 +1,13 @@
 import Phaser from "phaser";
-import { VISITOR_VELOCITY, SCALE_FACTOR } from "./config";
-import { VisitorState, GoAction, VisitorFSM, VisitorAction } from "./states";
+import { VISITOR_VELOCITY, SCALE_FACTOR, DEBUG } from "./config";
+import { VisitorState, VisitorFSM, VisitorAction } from "./states";
 
-const visitorActions = [
-  VisitorAction.StartMoving,
-  VisitorAction.StopMoving,
-  VisitorAction.FindPainting
-];
+const visitorActions = [VisitorAction.StartMoving, VisitorAction.FindPainting];
 
 export default class Visitor extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, everything) {
     super(scene, x, y);
+    this.name = Math.floor(Math.random() * 100) + "";
     this.everything = everything; // this sucks
     this.setData({
       state: VisitorState.Idle,
@@ -44,65 +41,70 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
     super.preUpdate(time, delta);
 
     const v = this;
-    const newState = this.stateTransition();
     const currentState = v.getData("state");
 
+    v.depth = v.y;
+    if (DEBUG) {
+      v.setTint(
+        {
+          [VisitorState.Idle]: 0xffffff,
+          [VisitorState.GoingToPainting]: 0xff0000,
+          [VisitorState.RandomlyMoving]: 0x00ff00
+        }[currentState]
+      );
+    }
+
+    if (currentState !== VisitorState.Idle) {
+      return;
+    } else {
+      v.setVelocityX(0);
+      v.setVelocityY(0);
+      v.anims.play("idle", true);
+    }
+
+    const newState = this.stateTransition();
     if (newState === currentState) {
       return;
     }
 
     const { pathfinder, layer, paintingTiles } = this.everything;
 
-    switch (newState) {
-      case VisitorState.Idle:
-        v.setVelocityX(0);
-        v.setVelocityY(0);
-        v.anims.play("idle", true);
-        break;
-      case VisitorState.GoingToPainting: {
-        this.setTint(0xff0000);
-        const dst = Phaser.Math.RND.weightedPick(paintingTiles);
-        const src = layer.getTileAtWorldXY(v.x, v.y);
-        v.animateTo(pathfinder.findPath(src, dst));
-        break;
-      }
-      case VisitorState.RandomlyMoving:
-        {
-          this.setTint(0x00ff00);
-          // TODO instead stupidly going in a direction they should be animated to a random tile
-          const direction = Phaser.Math.RND.weightedPick(Object.keys(GoAction));
-          const xDir =
-            direction == GoAction.GoLeft
-              ? -1
-              : direction === GoAction.GoRight
-                ? 1
-                : 0;
-          const yDir =
-            direction == GoAction.GoUp
-              ? -1
-              : direction === GoAction.GoDown
-                ? 1
-                : 0;
-          v.setVelocityX(VISITOR_VELOCITY * xDir);
-          v.setVelocityY(VISITOR_VELOCITY * yDir);
-          if (xDir > 0) {
-            this.walkRight();
-          } else {
-            this.walkLeft();
-          }
-        }
-        break;
-    }
     v.setData({
       state: newState,
       last_state_change: Date.now()
     });
+    switch (newState) {
+      case VisitorState.GoingToPainting: {
+        const dst = Phaser.Math.RND.weightedPick(paintingTiles);
+        const src = layer.getTileAtWorldXY(v.x, v.y);
+        // TODO if there's no immediate path they idle forever
+        v.animateTo(pathfinder.findPath(src, dst));
+        break;
+      }
+      case VisitorState.RandomlyMoving: {
+        const src = layer.getTileAtWorldXY(v.x, v.y);
+        v.animateTo(
+          pathfinder.findPath(src, pathfinder.getRandomWalkableTile([src]))
+        );
+        break;
+      }
+    }
   }
 
   animateTo(path) {
     const v = this;
     const scene = v.scene;
     if (path.length < 2) {
+      if (v.getData("state") === VisitorState.RandomlyMoving) {
+        const newState = VisitorFSM.transition(
+          VisitorState.RandomlyMoving,
+          VisitorAction.StopMoving
+        ).value;
+        v.setData({
+          state: newState,
+          last_state_change: Date.now()
+        });
+      }
       if (v.getData("state") === VisitorState.GoingToPainting) {
         const newState = VisitorFSM.transition(
           VisitorState.GoingToPainting,
@@ -139,21 +141,39 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
         x,
         y,
         duration,
-        onStart: () => (left ? this.walkLeft() : this.walkRight())
+        onStart: () => {
+          if (left) {
+            this.walkLeft();
+          } else {
+            this.walkRight();
+          }
+        }
       });
     }
 
     for (let i = 0; i < tweens.length; i++) {
       tweens[i].onComplete = () => {
         if (i === tweens.length - 1) {
-          const newState = VisitorFSM.transition(
-            VisitorState.GoingToPainting,
-            VisitorAction.FoundPainting
-          ).value;
-          v.setData({
-            state: newState,
-            last_state_change: Date.now()
-          });
+          if (v.getData("state") === VisitorState.RandomlyMoving) {
+            const newState = VisitorFSM.transition(
+              VisitorState.RandomlyMoving,
+              VisitorAction.StopMoving
+            ).value;
+            v.setData({
+              state: newState,
+              last_state_change: Date.now()
+            });
+          }
+          if (v.getData("state") === VisitorState.GoingToPainting) {
+            const newState = VisitorFSM.transition(
+              VisitorState.GoingToPainting,
+              VisitorAction.FoundPainting
+            ).value;
+            v.setData({
+              state: newState,
+              last_state_change: Date.now()
+            });
+          }
           v.anims.play("idle");
         } else {
           scene.tweens.add(tweens[i + 1]);
