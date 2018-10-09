@@ -8,7 +8,8 @@ A game. Exit the museum, but see art on the way. Second attempt after prayerslay
   * "Wow, Schmerhard Trichter definitely outdid himself on that one."
   * Jumping animation? not sure
 * Kicking animation
-* Up/down animation, possibly
-* Map needs doors
+* Doors need to close after some time
+* If left+right is pressed, player should idle, same for up+down
 * Build nice map
+* Nicer animations
 * More artworks

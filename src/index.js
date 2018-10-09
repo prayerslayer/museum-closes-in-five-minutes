@@ -128,6 +128,24 @@ function create() {
     frameRate: 12
   });
   this.anims.create({
+    key: "walk_up",
+    frames: this.anims.generateFrameNumbers("player", {
+      start: 8,
+      end: 15
+    }),
+    repeat: -1,
+    frameRate: 12
+  });
+  this.anims.create({
+    key: "walk_down",
+    frames: this.anims.generateFrameNumbers("player", {
+      start: 16,
+      end: 23
+    }),
+    repeat: -1,
+    frameRate: 12
+  });
+  this.anims.create({
     key: "idle",
     frames: this.anims.generateFrameNumbers("player", { start: 0, end: 0 })
   });
@@ -155,11 +173,8 @@ function create() {
 }
 
 function updatePlayer() {
-  const anyDown =
-    cursors.left.isDown ||
-    cursors.right.isDown ||
-    cursors.up.isDown ||
-    cursors.down.isDown;
+  const xDown = cursors.left.isDown || cursors.right.isDown;
+  const anyDown = xDown || cursors.up.isDown || cursors.down.isDown;
 
   if (!anyDown) {
     player.setVelocityX(0);
@@ -182,8 +197,14 @@ function updatePlayer() {
 
   if (cursors.up.isDown) {
     player.setVelocityY(-PLAYER_VELOCITY);
+    if (!xDown) {
+      player.anims.play("walk_up", true);
+    }
   } else if (cursors.down.isDown) {
     player.setVelocityY(PLAYER_VELOCITY);
+    if (!xDown) {
+      player.anims.play("walk_down", true);
+    }
   } else {
     player.setVelocityY(0);
   }

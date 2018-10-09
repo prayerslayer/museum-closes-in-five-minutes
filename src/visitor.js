@@ -23,6 +23,12 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
     this.flipX = false;
     this.anims.play("walk_x", true);
   }
+  walkUp() {
+    this.anims.play("walk_up", true);
+  }
+  walkDown() {
+    this.anims.play("walk_down", true);
+  }
 
   stateTransition() {
     const v = this;
@@ -124,9 +130,10 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
     for (let i = 1; i < path.length; i++) {
       const previous = path[i - 1];
       const current = path[i];
-      const { x: px } = layer.tileToWorldXY(previous[0], previous[1]);
+      const { x: px, y: py } = layer.tileToWorldXY(previous[0], previous[1]);
       const { x, y } = layer.tileToWorldXY(current[0], current[1]);
-      const left = x - px < 0;
+      const horizontality = x - px;
+      const verticality = y - py;
       const duration =
         Math.sqrt(
           Math.pow(current[0] - previous[0], 2) +
@@ -142,10 +149,14 @@ export default class Visitor extends Phaser.Physics.Arcade.Sprite {
         y,
         duration,
         onStart: () => {
-          if (left) {
+          if (horizontality < 0) {
             this.walkLeft();
-          } else {
+          } else if (horizontality > 0) {
             this.walkRight();
+          } else if (verticality < 0) {
+            this.walkUp();
+          } else if (verticality > 0) {
+            this.walkDown();
           }
         }
       });
